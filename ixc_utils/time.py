@@ -25,13 +25,13 @@ class TimeSpecCTYPE(Structure):
 
 def libc():
     """Return the loaded library for libc."""
-    global _libc
-    if _libc is None:
-        _libc = cdll.LoadLibrary(LIBC)
-    return _libc
+    global _libc_dll
+    if _libc_dll is None:
+        _libc_dll = cdll.LoadLibrary(LIBC)
+    return _libc_dll
 
 
-def ptp_gettime(self) -> float:
+def ptp_gettime() -> float:
     """Obtain the time from the PTP device."""
     tv = TimeSpecCTYPE()
     with open(PTP_DEV, "rb") as ptpf:
