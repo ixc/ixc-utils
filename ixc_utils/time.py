@@ -4,55 +4,47 @@
 Time related utilities.
 """
 
-"""Code to probe the real system clock time versus `time.time()` an if they're out of sync, wait."""
-
-from ctypes import cdll, c_longlong, c_long, pointer, sizeof, Structure
-from errno import EINVAL
-from functools import cached_property
-from logging import error, warning
 import time
+from ctypes import Structure, c_long, c_longlong, cdll, pointer
+from errno import EINVAL
+from logging import error, warning
+
+PTP_DEV = "/dev/ptp0"
+CLOCK_ID_FD_BASE = 0xFFFFFFE0
+LIBC = "libc.so.6"
+
+_libc_dll = None  # will be the libc .so
 
 
-class PTP:
-    """Interface to access The Precision Time Protocol (Linux only)."""
-
-    PTP_DEV = "/dev/ptp0"
-    CLOCK_ID_FD_BASE = 0xFFFFFFE0
-    LIBC = "libc.so.6"
-
-    class TimeSpecCTYPE(Structure):
-        _fields_ = [
-            ("tv_sec", c_longlong),
-            ("tv_nsec", c_long),
-        ]
-
-    @cached_property
-    def libc(self):
-        return cdll.LoadLibrary(self.LIBC)
-
-    def gettime(self) -> float:
-        tv = self.TimeSpecCTYPE()
-        libc = self.libc
-        with open(self.PTP_DEV, "rb") as ptpf:
-            ptp_fd = ptpf.fileno()
-            if ptp_fd > 0x0F:
-                raise ValueError(
-                    f"open({self.PTP_DEV!r}).fileno()={ptp_fd}: exceeds 0x0f, too big for the mask 0x{self.CLOCK_ID_FD_BASE:x}"
-                )
-            clock_id = self.CLOCK_ID_FD_BASE | ptp_fd
-            if libc.clock_gettime(clock_id, pointer(tv)) != 0:
-                raise OSError(EINVAL, f"libc.clock_gettime(0x{clock_id:x},buf) fails")
-
-        return tv.tv_sec + tv.tv_nsec / 1000000000
+class TimeSpecCTYPE(Structure):
+    _fields_ = [
+        ("tv_sec", c_longlong),
+        ("tv_nsec", c_long),
+    ]
 
 
-# make an instance of the class to use for access
-ptp = PTP()
+def libc():
+    """Return the loaded library for libc."""
+    global _libc
+    if _libc is None:
+        _libc = cdll.LoadLibrary(LIBC)
+    return _libc
 
 
-def ptp_gettime() -> float:
-    """Return the PTP time."""
-    return ptp.gettime()
+def ptp_gettime(self) -> float:
+    """Obtain the time from the PTP device."""
+    tv = TimeSpecCTYPE()
+    with open(PTP_DEV, "rb") as ptpf:
+        ptp_fd = ptpf.fileno()
+        if ptp_fd > 0x0F:
+            raise ValueError(
+                f"open({PTP_DEV!r}).fileno()={ptp_fd}: exceeds 0x0f, too big for the mask 0x{CLOCK_ID_FD_BASE:x}"
+            )
+        clock_id = CLOCK_ID_FD_BASE | ptp_fd
+        if libc().clock_gettime(clock_id, pointer(tv)) != 0:
+            raise OSError(EINVAL, f"libc.clock_gettime(0x{clock_id:x},buf) fails")
+
+    return tv.tv_sec + tv.tv_nsec / 1000000000
 
 
 def wait_for_time_sync(epsilon=0.1, tolerance=3.0, step=0.2) -> float:
