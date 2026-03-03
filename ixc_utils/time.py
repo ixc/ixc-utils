@@ -96,4 +96,11 @@ def wait_for_time_sync(epsilon=0.1, tolerance=3.0, step=0.2) -> float:
 
 
 if __name__ == "__main__":
-    wait_for_time_sync()
+    import sys
+
+    if sys.argv[1:] == ["poll"]:
+        while True:
+            print(time.time(), "PTP:", ptp_gettime(), flush=True)
+            time.sleep(0.1)
+    else:
+        wait_for_time_sync()
