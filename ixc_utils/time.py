@@ -51,7 +51,7 @@ def wait_for_time_sync(epsilon=0.1, tolerance=3.0, step=0.2) -> float:
     """
     Wait for `time.time()` to be close enough to the time from `ptp_gettime()`.
     Return the elapsed time spent waiting for synchronisation.
-    Raise `RuntimeError` if the times are not in sync by then.
+    Raise `TimeoutError` if the times are not in sync by then.
 
     A fly.io VM resumed from suspension initially has the pre-suspension
     time returned from `time.time()`. The fly.io infrastructure
@@ -83,7 +83,7 @@ def wait_for_time_sync(epsilon=0.1, tolerance=3.0, step=0.2) -> float:
             error(
                 f"clock still out of sync after {elapsed:f}s: time.time() {time_time:f}, ptp_gettime() {ptp_time:f}"
             )
-            raise RuntimeError(
+            raise TimeoutError(
                 f"time.time() {time_time:f}, ptp_gettime() {ptp_time:f}, discrepancy > {epsilon:f}s after {elapsed:f}s"
             )
         time.sleep(step)
