@@ -1,0 +1,18 @@
+registry = registry.fly.io
+app_name = ixc-fly-time-sync-cs
+tag = current
+docker_image = $(registry)/$(app_name):$(tag)
+
+_:
+  @echo _build - build docker image $(docker_image)
+  @echo _push  - build image and push to fly.io
+
+_build:
+  NO_COLOR=1 docker build --debug -t "$(docker_image)" $.
+
+_push: _build
+  flyctl auth docker
+  docker push '$(docker_image)'
+
+_deploy:
+  flyctl deploy --app '$(app_name)' --image '$(docker_image)'
